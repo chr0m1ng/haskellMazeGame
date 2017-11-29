@@ -1,7 +1,4 @@
--- Maze generator and solver in Haskell
--- Joe Wingbermuehle
--- 20070602 <> 20140815
-
+-- Maze generator in Haskell original created by Joe Wingbermuehle and Modified by Gabriel Santos
 module Main where
     
     import Control.Monad
@@ -9,58 +6,13 @@ module Main where
     import Control.Monad.Reader
     import Data.Map
     import System.Random
-    import Graphics.Gloss
-    import Graphics.Gloss.Interface.IO.Game
-    import Graphics.Gloss.Juicy
-    import Data.Maybe
-
-    import Codec.Picture.Repa (readImageRGBA, toByteString, reverseColorChannel)
-    import Graphics.Gloss
-    
-    readPng :: FilePath -> Int -> Int -> IO Picture
-    readPng path w h = do
-      (Right img) <- readImageRGBA path
-      let bs = toByteString $ reverseColorChannel img
-      return $ bitmapOfByteString w h (BitmapFormat TopToBottom PxRGBA) bs True
-
-    window :: Display
-    window = InWindow "Labirinto" (800, 600) (10, 10)
+    import Graphics.Gloss.Interface.Pure.Game
     
     background :: Color
-    background = black
+    background = white
 
-    drawElement :: ElementType -> Float -> Float -> Picture
-    drawElement e x y
-        | e == Space || e == Door || e == Visited = translate ((x * 20) -390) ((y * (-20)) + 230) $ color black $ rectangleSolid 20 20
-        | e == Wall = translate ((x * 20) -390) ((y * (-20)) + 230) $ color green $ rectangleSolid 20 20
-        | e == Person = translate ((x * 20) -390) ((y * (-20)) + 230) $ color white $ circle 8 
-        | e == Food = translate ((x * 20) -390) ((y * (-20)) + 230) $ color white $ thickCircle 8 8
-        | otherwise = translate ((x * 20) -390) ((y * (-20)) + 230) $ color blue $ rectangleSolid 20 20    
-
-    ioPicToPic :: Picture -> IO()
-    ioPicToPic p@(Bitmap width height _ _) = 
-        display (InWindow "Image Viewer" (width, height) (10, 10))
-                white
-                p
-
-    drawing :: Int -> Int -> MazeData -> Picture
-    drawing x y md
-        | (x, y) == ((playerX md), (playerY md)) = pictures [drawElement Person (fromIntegral x) (fromIntegral y), drawing (x + 1) y md] 
-        | (x, y) == ((targetX md), (targetY md)) = pictures [drawElement Food (fromIntegral x) (fromIntegral y), drawing (x + 1) y md] 
-        | x < 38 = pictures [drawElement (findWithDefault Wall (x, y) (maze md)) (fromIntegral x) (fromIntegral y), drawing (x + 1) y md]
-        | x == 38 && y < 22 = pictures [drawElement (findWithDefault Wall (x, y) (maze md)) (fromIntegral x) (fromIntegral y), drawing 0 (y + 1) md]
-        | otherwise = Blank
-
-    instance Show MazeData where
-        show = showMaze 0 0
-            where
-                showMaze x y md =
-                    if x == (width md) then
-                        if y + 1 == (height md) then ""
-                        else "\n" ++ (showMaze 0 (y + 1) md)
-                    else
-                        let e = findWithDefault Wall (x, y) (maze md) in
-                        (show e) ++ (showMaze (x + 1) y md)
+    fps :: Int
+    fps = 60
 
     data ElementType = Space | Wall | Marked | Visited | Door | Person | Food
         deriving (Eq)
@@ -78,13 +30,6 @@ module Main where
         targetY :: Int,
         maze :: Map (Int, Int) ElementType
     }
-    
-    instance Show ElementType where
-        show Space = "  "
-        show Wall = "[]"
-        show Marked = "++"
-        show Visited = show Space
-        show Door = show Space
     
     type MazeState a = ReaderT (Int, Int) (State MazeData) a
     
@@ -146,38 +91,9 @@ module Main where
                 cm <- canMove Wall d
                 when cm (move Space d >>= (\n -> local (const n) carve))
     
-    -- Find a path from the current position to the end position.
-    solveTo :: (Int, Int) -> MazeState Bool
-    solveTo stop = do
-        pos <- ask
-        if pos == stop then
-            return True
-        else do
-            st <- get; pos <- ask
-            put $ st { maze = insert pos Marked (maze st) }
-            foldM trySolve False [toEnum i | i <- [0 .. 3]]
-        where
-            trySolve result d
-                | result = return True
-                | otherwise = do
-                    cm <- canMove Space d
-                    if cm then do
-                        next <- move Marked d
-                        found <- local (const next) $ solveTo stop
-                        if found then return True
-                        else (move Visited d >> return False)
-                    else return False
-    
     -- Generate a random maze.
     generate :: Int -> Int -> Int -> MazeData
     generate w h s = execState (runReaderT carve (2, 2)) (initMaze w h s)
-    
-    -- Solve a maze.
-    solve :: MazeData -> MazeData
-    solve md =
-        let start = (2, 2) in
-        let stop = ((width md) - 3, (height md - 3)) in
-        execState (runReaderT (solveTo stop) start) md
 
     canWalk :: Int -> Int -> MazeData -> Bool
     canWalk x y md 
@@ -214,9 +130,6 @@ module Main where
             md
     
     handleKeys _ md = md
-
-    fps :: Int
-    fps = 60
     
     myUpdate :: Float -> MazeData -> MazeData
     myUpdate _ md = md
@@ -224,11 +137,24 @@ module Main where
     render :: MazeData -> Picture
     render md = drawing 0 0 md
 
+    drawElement :: ElementType -> Float -> Float -> Picture
+    drawElement e x y
+        | e == Space || e == Door || e == Visited = translate ((x * 20) -390) ((y * (-20)) + 230) $ color background $ rectangleSolid 20 20
+        | e == Wall = translate ((x * 20) -390) ((y * (-20)) + 230) $ color black $ rectangleSolid 20 20
+        | e == Person = translate ((x * 20) -390) ((y * (-20)) + 230) $ color blue $ circleSolid 8 
+        | e == Food = translate ((x * 20) -390) ((y * (-20)) + 230) $ color red $ thickCircle 8 8
+        | otherwise = translate ((x * 20) -390) ((y * (-20)) + 230) $ color blue $ rectangleSolid 20 20    
+
+    drawing :: Int -> Int -> MazeData -> Picture
+    drawing x y md
+        | (x, y) == ((playerX md), (playerY md)) = pictures [drawElement Person (fromIntegral x) (fromIntegral y), drawing (x + 1) y md] 
+        | (x, y) == ((targetX md), (targetY md)) = pictures [drawElement Food (fromIntegral x) (fromIntegral y), drawing (x + 1) y md] 
+        | x < 38 = pictures [drawElement (findWithDefault Wall (x, y) (maze md)) (fromIntegral x) (fromIntegral y), drawing (x + 1) y md]
+        | x == 38 && y < 22 = pictures [drawElement (findWithDefault Wall (x, y) (maze md)) (fromIntegral x) (fromIntegral y), drawing 0 (y + 1) md]
+        | otherwise = Blank
+
     -- Generate and display a solved random maze.
     main :: IO ()
     main = do
         let maze = generate 39 23 5
-        let solved = solve maze
-        putStrLn $ show maze
-        putStrLn $ show solved
         play FullScreen background fps maze render handleKeys myUpdate
