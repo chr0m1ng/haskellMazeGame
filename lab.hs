@@ -14,7 +14,7 @@ module Main where
     fps :: Int
     fps = 60
 
-    data ElementType = Space | Wall | Marked | Visited | Door | Person | Food
+    data ElementType = Space | Wall | Marked | Visited | Door | Person | Food | Hall
         deriving (Eq)
     
     data Direction = DLeft | DRight | DUp | DDown
@@ -100,35 +100,74 @@ module Main where
             | (findWithDefault Wall (x, y) (maze md)) == Space && x < 38 && y < 22 && y > 0 = True
             | (findWithDefault Wall (x, y) (maze md)) == Door && x < 38 && y < 22 && y > 0 = True
             | otherwise = False
+
+    finishedMaze :: MazeData -> Bool
+    finishedMaze md
+            | ((playerX md) == (targetX md)) && ((playerY md) == (targetY md)) = True
+            | otherwise = False
         
+
     handleKeys :: Event -> MazeData -> MazeData
-    handleKeys (EventKey (Char 'w') _ _ _) md = do
+    handleKeys (EventKey (Char 'w') keystate _ _) md = do
         let newY = (playerY md) - 1
-        if(canWalk (playerX md) newY md) then
-            md {playerY = newY}
-        else
-            md
-    handleKeys (EventKey (Char 's') _ _ _) md = do
-        let newY = (playerY md) + 1
-        if(canWalk (playerX md) newY md) then
+        if((keystate == Down) && (canWalk (playerX md) newY md)) then
             md {playerY = newY}
         else
             md
     
-    handleKeys (EventKey (Char 'd') _ _ _) md = do
+    handleKeys (EventKey (Char 's') keystate _ _) md
+        | keystate == Down && (finishedMaze md) = generate 39 23 start
+        | keystate == Down && (canWalk (playerX md) newY md) = md{playerY = newY, gen = g'}
+        | otherwise = md
+            where newY = (playerY md) + 1
+                  (start, g') = randomR (0, 100) $ gen md
+            -- (start, g') = randomR (0, 3) $ gen st
+        
+    
+    handleKeys (EventKey (Char 'd') keystate _ _) md = do
         let newX = (playerX md) + 1
-        if(canWalk newX (playerY md) md) then
+        if((keystate == Down) && (canWalk newX (playerY md) md)) then
             md {playerX = newX}
         else
             md
 
-    handleKeys (EventKey (Char 'a') _ _ _) md = do
+    handleKeys (EventKey (Char 'a') keystate _ _) md = do
         let newX = (playerX md) - 1
-        if(canWalk newX (playerY md) md) then
+        if((keystate == Down) && (canWalk newX (playerY md) md)) then
             md {playerX = newX}
         else
             md
     
+    handleKeys (EventKey (SpecialKey KeyUp) keystate _ _) md = do
+        let newY = (playerY md) - 1
+        if((keystate == Down) && (canWalk (playerX md) newY md)) then
+            md {playerY = newY}
+        else
+            md
+    
+    handleKeys (EventKey (SpecialKey KeyDown) keystate _ _) md
+        | keystate == Down && (finishedMaze md) = generate 39 23 start
+        | keystate == Down && (canWalk (playerX md) newY md) = md{playerY = newY, gen = g'}
+        | otherwise = md
+            where newY = (playerY md) + 1
+                  (start, g') = randomR (0, 100) $ gen md
+            -- (start, g') = randomR (0, 3) $ gen st
+        
+    
+    handleKeys (EventKey (SpecialKey KeyRight) keystate _ _) md = do
+        let newX = (playerX md) + 1
+        if((keystate == Down) && (canWalk newX (playerY md) md)) then
+            md {playerX = newX}
+        else
+            md
+
+    handleKeys (EventKey (SpecialKey KeyLeft) keystate _ _) md = do
+        let newX = (playerX md) - 1
+        if((keystate == Down) && (canWalk newX (playerY md) md)) then
+            md {playerX = newX}
+        else
+            md
+
     handleKeys _ md = md
     
     myUpdate :: Float -> MazeData -> MazeData
@@ -143,6 +182,7 @@ module Main where
         | e == Wall = translate ((x * 20) -390) ((y * (-20)) + 230) $ color black $ rectangleSolid 20 20
         | e == Person = translate ((x * 20) -390) ((y * (-20)) + 230) $ color blue $ circleSolid 8 
         | e == Food = translate ((x * 20) -390) ((y * (-20)) + 230) $ color red $ thickCircle 8 8
+        | e == Hall = pictures [translate 310 (-350) $ color red $ rectangleSolid 20 300, translate 350 (-350) $ color red $ rectangleSolid 20 300]
         | otherwise = translate ((x * 20) -390) ((y * (-20)) + 230) $ color blue $ rectangleSolid 20 20    
 
     drawing :: Int -> Int -> MazeData -> Picture
@@ -151,6 +191,7 @@ module Main where
         | (x, y) == ((targetX md), (targetY md)) = pictures [drawElement Food (fromIntegral x) (fromIntegral y), drawing (x + 1) y md] 
         | x < 38 = pictures [drawElement (findWithDefault Wall (x, y) (maze md)) (fromIntegral x) (fromIntegral y), drawing (x + 1) y md]
         | x == 38 && y < 22 = pictures [drawElement (findWithDefault Wall (x, y) (maze md)) (fromIntegral x) (fromIntegral y), drawing 0 (y + 1) md]
+        | finishedMaze md = pictures [drawElement Hall 0 0]
         | otherwise = Blank
 
     -- Generate and display a solved random maze.
