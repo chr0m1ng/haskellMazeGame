@@ -121,7 +121,6 @@ module Main where
         | otherwise = md
             where newY = (playerY md) + 1
                   (start, g') = randomR (0, 100) $ gen md
-            -- (start, g') = randomR (0, 3) $ gen st
         
     
     handleKeys (EventKey (Char 'd') keystate _ _) md = do
@@ -151,7 +150,6 @@ module Main where
         | otherwise = md
             where newY = (playerY md) + 1
                   (start, g') = randomR (0, 100) $ gen md
-            -- (start, g') = randomR (0, 3) $ gen st
         
     
     handleKeys (EventKey (SpecialKey KeyRight) keystate _ _) md = do
@@ -193,8 +191,7 @@ module Main where
         | x == 38 && y < 22 = pictures [drawElement (findWithDefault Wall (x, y) (maze md)) (fromIntegral x) (fromIntegral y), drawing 0 (y + 1) md]
         | finishedMaze md = pictures [drawElement Hall 0 0]
         | otherwise = Blank
-
-    -- Generate and display a solved random maze.
+        
     main :: IO ()
     main = do
         let maze = generate 39 23 5
