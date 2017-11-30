@@ -5,5 +5,6 @@ https://github.com/joewing/maze/blob/master/maze.hs
 ## How to Run
 ```
 $ ghc lab.hs -o maze 
+$ ./maze
 ```
 (in windows you'll need to write maze.exe to run it)
