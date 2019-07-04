@@ -4,7 +4,13 @@ https://github.com/joewing/maze/blob/master/maze.hs
 
 ## How to Run
 ```
+$ cabal update
+$ cabal install random
+$ cabal install gloss
 $ ghc lab.hs -o maze 
 $ ./maze
 ```
+
+![Game](https://i.imgur.com/Ax6Or6n.png)
+
 (in windows you'll need to write maze.exe to run it)
